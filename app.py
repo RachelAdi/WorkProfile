@@ -38,5 +38,26 @@ def add():
     app.logger.error("Request body is empty")
     return Response(status=404)
 
+# Health check endpoint
+@app.route("/health")
+def health():
+    try:
+        if health_check():
+            return {
+                "status": "healthy",
+                "database": "connected"
+            }, 200
+        else:
+            return {
+                "status": "unhealthy",
+                "database": "not connected"
+            }, 503
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": str(e)
+        }, 500
+
+
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=5001)
