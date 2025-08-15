@@ -60,7 +60,6 @@ PY
         run: docker rm -f workprofile-ci || true
 
   publish:
-    # ירוץ רק אם ה-build-and-test הצליח, ורק ב-push ל-main
     needs: build-and-test
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
