@@ -16,7 +16,6 @@ jobs:
       - name: Build Docker image
         run: docker build -t workprofile:ci .
 
-      # אם ה-App מאזין אצלך ל-5000, החליפי 5001 ל-5000 בשתי השורות הבאות
       - name: Run container
         run: docker run -d --name workprofile-ci -p 8080:5001 workprofile:ci
 
