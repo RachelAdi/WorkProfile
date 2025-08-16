@@ -16,7 +16,7 @@ jobs:
       - name: Build Docker image
         run: docker build -t workprofile:ci .
 
-      # אם ה-App מאזין אצלך ל-5000, החליפי 5001 ל-5000 בשתי השורות הבאות
+      # אם ה-App מאזין אצלך ל-5001, החליפי פה
       - name: Run container
         run: docker run -d --name workprofile-ci -p 8080:5001 workprofile:ci
 
@@ -34,22 +34,36 @@ jobs:
           docker logs workprofile-ci || true
           exit 1
 
-      - name: Test root endpoint "/"
+      - name: Test root endpoint "/" with debug
         run: |
           code=$(curl -sS -o /dev/null -w "%{http_code}" http://localhost:8080/)
           echo "HTTP / => $code"
-          test "$code" = "200"
+          if [ "$code" != "200" ]; then
+            echo "Root endpoint failed!"
+            docker logs workprofile-ci || true
+            exit 1
+          fi
 
-      - name: Test health endpoint "/health"
+      - name: Test health endpoint "/health" with debug
         run: |
           curl -sS http://localhost:8080/health | tee health.json
-          python - <<'PY'
-              import json, sys
-              with open('health.json') as f:
-                  data = json.load(f)
-              ok = (data.get('status') in ('ok','healthy')) or (data.get('database') == 'connected')
-              sys.exit(0 if ok else 1)
-          PY
+          # Debug: show contents of health.json
+          echo "Contents of health.json:"
+          cat health.json || echo "health.json not found"
+          # Test with python and debug prints
+          python -c "
+import json, sys
+try:
+    with open('health.json') as f:
+        data = json.load(f)
+except Exception as e:
+    print('Error reading health.json:', e)
+    data = {}
+print('Health data:', data)
+ok = (data.get('status') in ('ok','healthy')) or (data.get('database')=='connected')
+print('Check result:', ok)
+sys.exit(0 if ok else 1)
+"
 
       - name: Show logs on failure
         if: failure()
@@ -60,7 +74,6 @@ jobs:
         run: docker rm -f workprofile-ci || true
 
   publish:
-    # ירוץ רק אם ה-build-and-test הצליח, ורק ב-push ל-main
     needs: build-and-test
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
