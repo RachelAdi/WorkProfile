@@ -51,20 +51,19 @@ jobs:
           echo "Contents of health.json:"
           cat health.json || echo "health.json not found"
           # Test with python and debug prints
-          python -c "
-import json, sys
-try:
-    with open('health.json') as f:
-        data = json.load(f)
-except Exception as e:
-    print('Error reading health.json:', e)
-    data = {}
-print('Health data:', data)
-ok = (data.get('status') in ('ok','healthy')) or (data.get('database')=='connected')
-print('Check result:', ok)
-sys.exit(0 if ok else 1)
-"
-
+          python - <<'PY'
+          import json, sys
+          try:
+              with open('health.json') as f:
+                  data = json.load(f)
+          except Exception as e:
+              print('Error reading health.json:', e)
+              data = {}
+          print('Health data:', data)
+          ok = (data.get('status') in ('ok','healthy')) or (data.get('database')=='connected')
+          print('Check result:', ok)
+          sys.exit(0 if ok else 1)
+          PY
       - name: Show logs on failure
         if: failure()
         run: docker logs workprofile-ci || true
