@@ -3,7 +3,7 @@ kind: ConfigMap
 metadata:
   name: workprofile-config
 data:
-  DB_HOST: "mysql-service"     # שם ה-Service של MySQL בתוך הקלאסטר
+  DB_HOST: "mysql-service"
   DB_NAME: "workprofile_db"
   BACKEND: "k8s"
-  APP_PORT: "5001"             # אם הקוד שלך קורא מהמשתנה הזה; אחרת לא מפריע
+  APP_PORT: "5001"
