@@ -75,7 +75,7 @@ jobs:
         run: |
           docker run -d --rm --name workprofile-test -p ${APP_PORT}:5001 \
             -e BACKEND=http://localhost:${APP_PORT} \
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}
           for i in {1..30}; do
             if curl -fsS "http://localhost:${APP_PORT}/health" >/dev/null; then break; fi
             echo "Waiting for app... ($i/30)"; sleep 2
@@ -165,8 +165,8 @@ jobs:
 
       - name: Load image into kind
         run: |
-          docker pull "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
-          kind load docker-image "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest" --name workprofile-ci || true
+          docker pull "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}"
+          kind load docker-image "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}" --name workprofile-ci || true
 
       - name: Apply MySQL manifests
         run: |
@@ -180,7 +180,7 @@ jobs:
           kubectl apply -f ${K8S_DIR}/workprofile-configmap.yaml
           kubectl apply -f ${K8S_DIR}/workprofile-deployment.yaml
           kubectl apply -f ${K8S_DIR}/workprofile-service.yaml
-          kubectl set image deployment/workprofile workprofile-container=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          kubectl set image deployment/workprofile workprofile-container=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}
           kubectl rollout status deployment/workprofile --timeout=10m
 
       - name: Port-forward & curl tests
