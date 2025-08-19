@@ -26,7 +26,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: 3.11
+          python-version: 3.10
 
       - name: Install dependencies
         run: |
@@ -73,21 +73,16 @@ jobs:
 
       - name: Run container for tests
         run: |
-          docker run -d --rm --name workprofile-test -p 5001:5001 \
-            -e DB_HOST=mysql \
-            -e DB_USER=flaskapp \
-            -e DB_PASS=flaskapp \
-            -e DB_NAME=workprofile_db \
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }} || (docker logs workprofile-test && exit 1)
-          
+          docker run -d --rm --name workprofile-test -p ${APP_PORT}:5001 \
+            -e BACKEND=http://localhost:${APP_PORT} \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
           for i in {1..30}; do
-            if curl -fsS "http://localhost:5001/health" >/dev/null; then break; fi
+            if curl -fsS "http://localhost:${APP_PORT}/health" >/dev/null; then break; fi
             echo "Waiting for app... ($i/30)"; sleep 2
           done
-          curl -f "http://localhost:5001/" && echo "✓ Main endpoint works"
-          curl -f "http://localhost:5001/health" && echo "✓ Health endpoint works"
+          curl -f "http://localhost:${APP_PORT}/" && echo "✓ Main endpoint works"
+          curl -f "http://localhost:${APP_PORT}/health" && echo "✓ Health endpoint works"
           docker stop workprofile-test
-
 
   # ---------------------- Stage 3: 3-Tier Docker Compose Tests ----------------------
   stage3_compose:
@@ -170,8 +165,8 @@ jobs:
 
       - name: Load image into kind
         run: |
-          docker pull "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}"
-          kind load docker-image "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}" --name workprofile-ci || true
+          docker pull "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+          kind load docker-image "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest" --name workprofile-ci || true
 
       - name: Apply MySQL manifests
         run: |
@@ -185,7 +180,7 @@ jobs:
           kubectl apply -f ${K8S_DIR}/workprofile-configmap.yaml
           kubectl apply -f ${K8S_DIR}/workprofile-deployment.yaml
           kubectl apply -f ${K8S_DIR}/workprofile-service.yaml
-          kubectl set image deployment/workprofile workprofile-container=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}
+          kubectl set image deployment/workprofile workprofile-container=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
           kubectl rollout status deployment/workprofile --timeout=10m
 
       - name: Port-forward & curl tests
