@@ -1,26 +1,42 @@
-containers:
-  - name: workprofile-app
-    image: racheladi/workprofile  # <-- כאן השם שלך
-    ports:
-      - containerPort: 5001
-    envFrom:
-      - configMapRef:
-          name: workprofile-config
-    env:
-      - name: DB_USER
-        valueFrom:
-          secretKeyRef:
-            name: mysql-secret
-            key: MYSQL_USER
-      - name: DB_PASS
-        valueFrom:
-          secretKeyRef:
-            name: mysql-secret
-            key: MYSQL_PASSWORD
-      - name: DB_NAME
-        valueFrom:
-          secretKeyRef:
-            name: mysql-secret
-            key: MYSQL_DATABASE
-      - name: DB_HOST
-        value: "mysql-service"
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: workprofile-app
+  labels:
+    app: workprofile
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: workprofile
+  template:
+    metadata:
+      labels:
+        app: workprofile
+    spec:
+      containers:
+        - name: workprofile-app
+          image: racheladi/workprofile  # <-- שם התמונה שלך בדוקר
+          ports:
+            - containerPort: 5001
+          envFrom:
+            - configMapRef:
+                name: workprofile-config
+          env:
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: MYSQL_USER
+            - name: DB_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: MYSQL_PASSWORD
+            - name: DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: MYSQL_DATABASE
+            - name: DB_HOST
+              value: "mysql-service"
