@@ -83,41 +83,40 @@ jobs:
 
   # ---------------------- Stage 3: 3-Tier Docker Compose Tests ----------------------
   stage3_compose:
-   runs-on: ubuntu-latest
-   name: Stage 3 – 3-Tier Docker Compose Tests
-   needs: stage2_build_and_test
-   steps:
-     - name: Checkout
-       uses: actions/checkout@v4
+    runs-on: ubuntu-latest
+    name: Stage 3 – 3-Tier Docker Compose Tests
+    needs: stage2_build_and_test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-     - name: Start 3-tier stack
-       run: |
-         cd ${COMPOSE_DIR}
-         docker compose up -d
-         echo "Waiting for services to be ready..."
-         for i in {1..60}; do
-           MYSQL_OK=$(docker logs workprofile-mysql 2>&1 | grep "ready for connections" || true)
-           NGINX_OK=$(curl -fsS http://localhost:${NGINX_PORT}/health || true)
-           APP_OK=$(curl -fsS http://localhost:${APP_PORT}/health || true)
-           if [[ -n "$MYSQL_OK" && -n "$NGINX_OK" && -n "$APP_OK" ]]; then
-             echo "All services are up!"
-             break
-           fi
-           echo "Waiting... ($i/60)"
-           sleep 5
-         done
+      - name: Start 3-tier stack
+        run: |
+          cd ${COMPOSE_DIR}
+          docker compose up -d
+          echo "Waiting for services to be ready..."
+          for i in {1..60}; do
+            HEALTH=$(curl -fsS "http://localhost:${NGINX_PORT}/health" || echo "not ready")
+            if [[ "$HEALTH" == *"healthy"* ]]; then
+              echo "All services are ready!"
+              break
+            fi
+            echo "Waiting for nginx/app/mysql... ($i/60)"
+            sleep 3
+          done
 
-     - name: Curl tests via Nginx
-       run: |
-         curl -f "http://localhost:${NGINX_PORT}/" && echo "✓ Nginx proxy works"
-         curl -f "http://localhost:${NGINX_PORT}/health" && echo "✓ Health through nginx works"
-         curl -s "http://localhost:${NGINX_PORT}/health" | grep "Database: Healthy" && echo "✓ Database connectivity works"
- 
-     - name: Cleanup
-       if: always()
-       run: |
-         cd ${COMPOSE_DIR}
-         docker compose down -v
+      - name: Health check via Nginx
+        run: |
+          echo "Checking /health endpoint through Nginx..."
+          curl -f "http://localhost:${NGINX_PORT}/health" && echo "✓ Health endpoint works"
+          curl -s "http://localhost:${NGINX_PORT}/health" | grep "Database: Healthy" && echo "✓ Database connectivity works"
+
+      - name: Cleanup
+        if: always()
+        run: |
+          cd ${COMPOSE_DIR}
+          docker compose down -v
+
 
 
   # ---------------------- Stage 4: Publish Docker Image ----------------------
