@@ -15,6 +15,7 @@ env:
   K8S_DIR: k8s
 
 jobs:
+  # ---------------------- Stage 1: Basic Validation ----------------------
   stage1_validation:
     runs-on: ubuntu-latest
     name: Stage 1 – Basic Validation
@@ -40,6 +41,7 @@ jobs:
           test -f requirements.txt && echo "✓ requirements.txt exists"
           test -f app.py && echo "✓ app.py exists"
 
+  # ---------------------- Stage 2: Build & Single-Container Tests ----------------------
   stage2_build_and_test:
     runs-on: ubuntu-latest
     name: Stage 2 – Build & Single-Container Tests
@@ -82,6 +84,7 @@ jobs:
           curl -f "http://localhost:${APP_PORT}/health" && echo "✓ Health endpoint works"
           docker stop workprofile-test
 
+  # ---------------------- Stage 3: 3-Tier Docker Compose Tests ----------------------
   stage3_compose:
     runs-on: ubuntu-latest
     name: Stage 3 – 3-Tier Docker Compose Tests
@@ -111,6 +114,7 @@ jobs:
           cd ${COMPOSE_DIR}
           docker compose down -v
 
+  # ---------------------- Stage 4: Publish Docker Image ----------------------
   stage4_publish:
     runs-on: ubuntu-latest
     name: Stage 4 – Publish
@@ -145,6 +149,7 @@ jobs:
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ env.SHORT_SHA }}
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
 
+  # ---------------------- Stage 5: Kubernetes Deployment Tests ----------------------
   stage5_k8s:
     runs-on: ubuntu-latest
     name: Stage 5 – Kubernetes Deployment Tests
@@ -191,35 +196,12 @@ jobs:
           curl -f http://localhost:5001/health && echo "✓ Kubernetes health works"
           curl -s http://localhost:5001/health | grep "Database: Healthy" && echo "✓ Kubernetes database works"
 
+  # ---------------------- Stage 6: Manual Deployment Instructions ----------------------
   stage6_manual:
     runs-on: ubuntu-latest
     name: Stage 6 – Manual Deployment Instructions
     needs: stage5_k8s
     steps:
-      - name: Create deployment guide artifact
-        run: |
-          cat > MANUAL_DEPLOYMENT.md <<'MD'
-# WorkProfile Manual Deployment
-## Steps
-1. Clone repo
-2. Apply K8s manifests:
-   kubectl apply -f k8s/mysql-secret.yaml
-   kubectl apply -f k8s/mysql-statefulset.yaml
-   kubectl apply -f k8s/mysql-service.yaml
-   kubectl apply -f k8s/workprofile-configmap.yaml
-   kubectl apply -f k8s/workprofile-deployment.yaml
-   kubectl apply -f k8s/workprofile-service.yaml
-   kubectl set image deployment/workprofile workprofile-container=<image>
-3. Verify rollout and port-forward
-4. Access http://localhost:5001/health
-MD
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: manual-deployment
-          path: MANUAL_DEPLOYMENT.md
-
       - name: Add instructions to GitHub Summary
         run: |
           echo "## Manual Kubernetes Deployment" >> $GITHUB_STEP_SUMMARY
