@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: workprofile
+  labels:
+    app: workprofile
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: workprofile
+  template:
+    metadata:
+      labels:
+        app: workprofile
+    spec:
+      containers:
+      - name: workprofile
+        image: workprofile:2.0  # <-- התמונה שלך
+        ports:
+        - containerPort: 5001
+        env:
+        - name: DB_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: workprofile-config
+              key: DB_HOST
+        - name: DB_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: workprofile-config
+              key: DB_NAME
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: mysql-secret
+              key: MYSQL_USER
+        - name: DB_PASS
+          valueFrom:
+            secretKeyRef:
+              name: mysql-secret
+              key: MYSQL_PASSWORD
