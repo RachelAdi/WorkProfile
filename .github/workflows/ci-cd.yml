@@ -7,7 +7,7 @@ on:
   pull_request:
 
 env:
-  APP_PORT: 5000
+  APP_PORT: 5001
   NGINX_PORT: 8080
   REGISTRY: docker.io
   IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/workprofile
@@ -15,7 +15,6 @@ env:
   K8S_DIR: k8s
 
 jobs:
-  # ---------------------- Stage 1: Basic Validation ----------------------
   stage1_validation:
     runs-on: ubuntu-latest
     name: Stage 1 – Basic Validation
@@ -41,7 +40,6 @@ jobs:
           test -f requirements.txt && echo "✓ requirements.txt exists"
           test -f app.py && echo "✓ app.py exists"
 
-  # ---------------------- Stage 2: Build & Single-Container Tests ----------------------
   stage2_build_and_test:
     runs-on: ubuntu-latest
     name: Stage 2 – Build & Single-Container Tests
@@ -73,7 +71,7 @@ jobs:
 
       - name: Run container for tests
         run: |
-          docker run -d --rm --name workprofile-test -p ${APP_PORT}:5000 \
+          docker run -d --rm --name workprofile-test -p ${APP_PORT}:5001 \
             -e BACKEND=http://localhost:${APP_PORT} \
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}
           for i in {1..30}; do
@@ -84,7 +82,6 @@ jobs:
           curl -f "http://localhost:${APP_PORT}/health" && echo "✓ Health endpoint works"
           docker stop workprofile-test
 
-  # ---------------------- Stage 3: 3-Tier Docker Compose Tests ----------------------
   stage3_compose:
     runs-on: ubuntu-latest
     name: Stage 3 – 3-Tier Docker Compose Tests
@@ -114,7 +111,6 @@ jobs:
           cd ${COMPOSE_DIR}
           docker compose down -v
 
-  # ---------------------- Stage 4: Publish Docker Image ----------------------
   stage4_publish:
     runs-on: ubuntu-latest
     name: Stage 4 – Publish
@@ -149,7 +145,6 @@ jobs:
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ env.SHORT_SHA }}
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
 
-  # ---------------------- Stage 5: Kubernetes Deployment Tests ----------------------
   stage5_k8s:
     runs-on: ubuntu-latest
     name: Stage 5 – Kubernetes Deployment Tests
@@ -185,43 +180,69 @@ jobs:
 
       - name: Port-forward & curl tests
         run: |
-          kubectl port-forward deployment/workprofile 5000:5000 >/dev/null 2>&1 &
+          kubectl port-forward deployment/workprofile 5001:5001 >/dev/null 2>&1 &
           PF_PID=$!
           trap "kill $PF_PID || true" EXIT
           for i in {1..40}; do
-            if curl -fsS "http://localhost:5000/health" >/dev/null; then break; fi
+            if curl -fsS "http://localhost:5001/health" >/dev/null; then break; fi
             echo "Waiting for app on port-forward... ($i/40)"; sleep 3
           done
-          curl -f http://localhost:5000/ && echo "✓ Kubernetes app works"
-          curl -f http://localhost:5000/health && echo "✓ Kubernetes health works"
-          curl -s http://localhost:5000/health | grep "Database: Healthy" && echo "✓ Kubernetes database works"
+          curl -f http://localhost:5001/ && echo "✓ Kubernetes app works"
+          curl -f http://localhost:5001/health && echo "✓ Kubernetes health works"
+          curl -s http://localhost:5001/health | grep "Database: Healthy" && echo "✓ Kubernetes database works"
 
-  # ---------------------- Stage 6: Manual Deployment Instructions ----------------------
   stage6_manual:
     runs-on: ubuntu-latest
     name: Stage 6 – Manual Deployment Instructions
     needs: stage5_k8s
     steps:
-      - name: Create deployment guide
+      - name: Create deployment guide artifact
         run: |
           cat > MANUAL_DEPLOYMENT.md <<'MD'
-          # WorkProfile Manual Deployment
-          ## Steps
-          1. Clone repo
-          2. Apply K8s manifests:
-             kubectl apply -f k8s/mysql-secret.yaml
-             kubectl apply -f k8s/mysql-statefulset.yaml
-             kubectl apply -f k8s/mysql-service.yaml
-             kubectl apply -f k8s/workprofile-configmap.yaml
-             kubectl apply -f k8s/workprofile-deployment.yaml
-             kubectl apply -f k8s/workprofile-service.yaml
-             kubectl set image deployment/workprofile workprofile-container=<image>
-          3. Verify rollout and port-forward
-          4. Access http://localhost:5000/health
-          MD
+# WorkProfile Manual Deployment
+## Steps
+1. Clone repo
+2. Apply K8s manifests:
+   kubectl apply -f k8s/mysql-secret.yaml
+   kubectl apply -f k8s/mysql-statefulset.yaml
+   kubectl apply -f k8s/mysql-service.yaml
+   kubectl apply -f k8s/workprofile-configmap.yaml
+   kubectl apply -f k8s/workprofile-deployment.yaml
+   kubectl apply -f k8s/workprofile-service.yaml
+   kubectl set image deployment/workprofile workprofile-container=<image>
+3. Verify rollout and port-forward
+4. Access http://localhost:5001/health
+MD
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: manual-deployment
           path: MANUAL_DEPLOYMENT.md
+
+      - name: Add instructions to GitHub Summary
+        run: |
+          echo "## Manual Kubernetes Deployment" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Deploy the manifests:" >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
+          echo "kubectl apply -f k8s/mysql-secret.yaml" >> $GITHUB_STEP_SUMMARY
+          echo "kubectl apply -f k8s/mysql-statefulset.yaml" >> $GITHUB_STEP_SUMMARY
+          echo "kubectl apply -f k8s/mysql-service.yaml" >> $GITHUB_STEP_SUMMARY
+          echo "kubectl apply -f k8s/workprofile-configmap.yaml" >> $GITHUB_STEP_SUMMARY
+          echo "kubectl apply -f k8s/workprofile-deployment.yaml" >> $GITHUB_STEP_SUMMARY
+          echo "kubectl apply -f k8s/workprofile-service.yaml" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Verify resources:" >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
+          echo "kubectl get pods" >> $GITHUB_STEP_SUMMARY
+          echo "kubectl get statefulset" >> $GITHUB_STEP_SUMMARY
+          echo "kubectl get pvc" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Access the application:" >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
+          echo "kubectl port-forward deployment/workprofile 5001:5001" >> $GITHUB_STEP_SUMMARY
+          echo "# or expose via NodePort / LoadBalancer" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
