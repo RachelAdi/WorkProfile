@@ -26,7 +26,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: 3.10
+          python-version: 3.11
 
       - name: Install dependencies
         run: |
@@ -202,29 +202,26 @@ jobs:
     name: Stage 6 – Manual Deployment Instructions
     needs: stage5_k8s
     steps:
-      - name: Add instructions to GitHub Summary
+      - name: Create deployment guide
         run: |
-          echo "## Manual Kubernetes Deployment" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Deploy the manifests:" >> $GITHUB_STEP_SUMMARY
-          echo '```bash' >> $GITHUB_STEP_SUMMARY
-          echo "kubectl apply -f k8s/mysql-secret.yaml" >> $GITHUB_STEP_SUMMARY
-          echo "kubectl apply -f k8s/mysql-statefulset.yaml" >> $GITHUB_STEP_SUMMARY
-          echo "kubectl apply -f k8s/mysql-service.yaml" >> $GITHUB_STEP_SUMMARY
-          echo "kubectl apply -f k8s/workprofile-configmap.yaml" >> $GITHUB_STEP_SUMMARY
-          echo "kubectl apply -f k8s/workprofile-deployment.yaml" >> $GITHUB_STEP_SUMMARY
-          echo "kubectl apply -f k8s/workprofile-service.yaml" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Verify resources:" >> $GITHUB_STEP_SUMMARY
-          echo '```bash' >> $GITHUB_STEP_SUMMARY
-          echo "kubectl get pods" >> $GITHUB_STEP_SUMMARY
-          echo "kubectl get statefulset" >> $GITHUB_STEP_SUMMARY
-          echo "kubectl get pvc" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Access the application:" >> $GITHUB_STEP_SUMMARY
-          echo '```bash' >> $GITHUB_STEP_SUMMARY
-          echo "kubectl port-forward deployment/workprofile 5001:5001" >> $GITHUB_STEP_SUMMARY
-          echo "# or expose via NodePort / LoadBalancer" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat > MANUAL_DEPLOYMENT.md <<'MD'
+          # WorkProfile Manual Deployment
+          ## Steps
+          1. Clone repo
+          2. Apply K8s manifests:
+             kubectl apply -f k8s/mysql-secret.yaml
+             kubectl apply -f k8s/mysql-statefulset.yaml
+             kubectl apply -f k8s/mysql-service.yaml
+             kubectl apply -f k8s/workprofile-configmap.yaml
+             kubectl apply -f k8s/workprofile-deployment.yaml
+             kubectl apply -f k8s/workprofile-service.yaml
+             kubectl set image deployment/workprofile workprofile-container=<image>
+          3. Verify rollout and port-forward
+          4. Access http://localhost:5001/health
+          MD
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: manual-deployment
+          path: MANUAL_DEPLOYMENT.md
