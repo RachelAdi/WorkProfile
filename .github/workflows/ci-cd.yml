@@ -155,6 +155,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set VERSION for Kubernetes
+        run: |
+          if [ -z "${{ env.VERSION }}" ]; then
+            echo "VERSION=latest" >> $GITHUB_ENV
+          fi
+
       - name: Create kind cluster
         uses: helm/kind-action@v1.10.0
         with:
@@ -162,8 +168,8 @@ jobs:
 
       - name: Load image into kind
         run: |
-          docker pull "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}"
-          kind load docker-image "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}" --name workprofile-ci || true
+          docker pull "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}" || true
+          kind load docker-image "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}" --name workprofile-ci
 
       - name: Apply MySQL manifests
         run: |
@@ -182,17 +188,16 @@ jobs:
 
       - name: Port-forward & curl tests
         run: |
-          kubectl port-forward deployment/workprofile 5001:5001 >/dev/null 2>&1 &
+          kubectl port-forward deployment/workprofile 5000:5000 >/dev/null 2>&1 &
           PF_PID=$!
           trap "kill $PF_PID || true" EXIT
           for i in {1..40}; do
-            if curl -fsS "http://localhost:5001/health" >/dev/null; then break; fi
+            if curl -fsS "http://localhost:5000/health" >/dev/null; then break; fi
             echo "Waiting for app on port-forward... ($i/40)"; sleep 3
           done
-          curl -f http://localhost:5001/ || true
-          curl -f http://localhost:5001/health || true
-          curl -s http://localhost:5001/health | grep -i "healthy" || true
-          echo "✓ Stage 5 Kubernetes check completed"
+          curl -f http://localhost:5000/ && echo "✓ Kubernetes app works"
+          curl -f http://localhost:5000/health && echo "✓ Kubernetes health works"
+          curl -s http://localhost:5000/health | grep "Database: Healthy" && echo "✓ Kubernetes database works"
 
   # ---------------------- Stage 6: Manual Deployment Instructions ----------------------
   stage6_manual:
