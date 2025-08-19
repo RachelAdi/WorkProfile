@@ -73,16 +73,21 @@ jobs:
 
       - name: Run container for tests
         run: |
-          docker run -d --rm --name workprofile-test -p ${APP_PORT}:5001 \
-            -e BACKEND=http://localhost:${APP_PORT} \
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}
+          docker run -d --rm --name workprofile-test -p 5001:5001 \
+            -e DB_HOST=mysql \
+            -e DB_USER=flaskapp \
+            -e DB_PASS=flaskapp \
+            -e DB_NAME=workprofile_db \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }} || (docker logs workprofile-test && exit 1)
+          
           for i in {1..30}; do
-            if curl -fsS "http://localhost:${APP_PORT}/health" >/dev/null; then break; fi
+            if curl -fsS "http://localhost:5001/health" >/dev/null; then break; fi
             echo "Waiting for app... ($i/30)"; sleep 2
           done
-          curl -f "http://localhost:${APP_PORT}/" && echo "✓ Main endpoint works"
-          curl -f "http://localhost:${APP_PORT}/health" && echo "✓ Health endpoint works"
+          curl -f "http://localhost:5001/" && echo "✓ Main endpoint works"
+          curl -f "http://localhost:5001/health" && echo "✓ Health endpoint works"
           docker stop workprofile-test
+
 
   # ---------------------- Stage 3: 3-Tier Docker Compose Tests ----------------------
   stage3_compose:
