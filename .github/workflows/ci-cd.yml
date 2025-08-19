@@ -42,42 +42,44 @@ jobs:
           test -f app.py && echo "✓ app.py exists"
 
   # ---------------------- Stage 2: Build & Single-Container Tests ----------------------
-  runs-on: ubuntu-latest
-  name: Stage 2 – Build & Single-Container Tests
-  needs: stage1_validation
-  steps:
-    - name: Checkout
-      uses: actions/checkout@v4
+  stage2_build_and_test:
+   runs-on: ubuntu-latest
+   name: Stage 2 – Build & Single-Container Tests
+   needs: stage1_validation
+   steps:
+     - name: Checkout
+       uses: actions/checkout@v4
 
-    - name: Compute version
-      id: ver
-      run: |
-        DATE=$(date -u +%Y.%m.%d)
-        SHA=${GITHUB_SHA::7}
-        echo "VERSION=${DATE}.${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
-        echo "SHORT_SHA=${SHA}" >> $GITHUB_ENV
+     - name: Compute version
+       id: ver
+       run: |
+         DATE=$(date -u +%Y.%m.%d)
+         SHA=${GITHUB_SHA::7}
+         echo "VERSION=${DATE}.${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
+         echo "SHORT_SHA=${SHA}" >> $GITHUB_ENV
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+     - name: Set up Docker Buildx
+       uses: docker/setup-buildx-action@v3
 
-    - name: Build Docker image
-      run: |
-        docker build -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }} .
-        docker tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }} ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-        docker images
+     - name: Build Docker image
+       run: |
+         docker build -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }} .
+         docker tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }} ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+         docker images
 
-    - name: Run container for tests
-      run: |
-        docker run -d --rm --name workprofile-test -p ${APP_PORT}:5000 \
-          -e BACKEND=http://localhost:${APP_PORT} \
-          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}
-        for i in {1..30}; do
-          if curl -fsS "http://localhost:${APP_PORT}/health" >/dev/null; then break; fi
-          echo "Waiting for app... ($i/30)"; sleep 2
-        done
-        curl -f "http://localhost:${APP_PORT}/" && echo "✓ Main endpoint works"
-        curl -f "http://localhost:${APP_PORT}/health" && echo "✓ Health endpoint works"
-        docker stop workprofile-test
+     - name: Run container for tests
+       run: |
+         docker run -d --rm --name workprofile-test -p ${APP_PORT}:5000 \
+           -e BACKEND=http://localhost:${APP_PORT} \
+           ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}
+         for i in {1..30}; do
+           if curl -fsS "http://localhost:${APP_PORT}/health" >/dev/null; then break; fi
+           echo "Waiting for app... ($i/30)"; sleep 2
+         done
+         curl -f "http://localhost:${APP_PORT}/" && echo "✓ Main endpoint works"
+         curl -f "http://localhost:${APP_PORT}/health" && echo "✓ Health endpoint works"
+         docker stop workprofile-test
+
 
   # ---------------------- Stage 3: 3-Tier Docker Compose Tests ----------------------
   stage3_compose:
