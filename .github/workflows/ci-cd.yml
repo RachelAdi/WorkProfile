@@ -182,30 +182,24 @@ jobs:
           echo "## Manual Kubernetes Deployment" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Deploy the manifests:" >> $GITHUB_STEP_SUMMARY
-          echo '
-bash' >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
           echo "kubectl apply -f k8s/mysql-secret.yaml" >> $GITHUB_STEP_SUMMARY
           echo "kubectl apply -f k8s/mysql-statefulset.yaml" >> $GITHUB_STEP_SUMMARY
           echo "kubectl apply -f k8s/mysql-service.yaml" >> $GITHUB_STEP_SUMMARY
           echo "kubectl apply -f k8s/workprofile-configmap.yaml" >> $GITHUB_STEP_SUMMARY
           echo "kubectl apply -f k8s/workprofile-deployment.yaml" >> $GITHUB_STEP_SUMMARY
           echo "kubectl apply -f k8s/workprofile-service.yaml" >> $GITHUB_STEP_SUMMARY
-          echo '
-' >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Verify resources:" >> $GITHUB_STEP_SUMMARY
-          echo '
-bash' >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
           echo "kubectl get pods" >> $GITHUB_STEP_SUMMARY
           echo "kubectl get statefulset" >> $GITHUB_STEP_SUMMARY
           echo "kubectl get pvc" >> $GITHUB_STEP_SUMMARY
-          echo '
-' >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Access the application:" >> $GITHUB_STEP_SUMMARY
-          echo '
-bash' >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
           echo "kubectl port-forward deployment/workprofile 5001:5001" >> $GITHUB_STEP_SUMMARY
           echo "# or expose via NodePort / LoadBalancer" >> $GITHUB_STEP_SUMMARY
-          echo '
-' >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
